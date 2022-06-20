@@ -1,6 +1,6 @@
 # Intern_SE
 
-We are present the two task SE model with BLSTM, one is the Mapping task and other is the IRM task.
+We show two task SE models with BLSTM, one for the Mapping task and the other for the IRM task. The dataset is VCTK.  
 The Dataset is VCTK.
 
 you can used run1.sh to training and testing the SE model.  
