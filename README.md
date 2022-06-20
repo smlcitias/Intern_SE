@@ -17,3 +17,15 @@ python main.py --model BLSTM_01 --target MAP --batch_size 1 --epochs 50 \
 --version　　　　　　　defined your version  
 --lr　　　　　　　　　　training learn rate  
 --task　　　　　　　　　defined your datasets  
+
+Environment Setup
+python-----------3.6.13
+torch------------1.10.0
+librosa----------0.9.1
+numpy------------1.19.5
+scipy------------1.5.4
+tensorboardx-----2.5.1
+tqdm-------------4.64.0
+pandas-----------1.1.5
+pystoi-----------0.3.3
+pesq-------------0.0.4
