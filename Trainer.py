@@ -148,7 +148,7 @@ class Trainer:
         elif target == 'IRM':      
             pred_clean = recons_spec_phase(pred*log1p_y, y_phase, y_len, feature_type='log1p')
 
-        if self.save_results == True:
+        if self.save_results == 'True':
             out_a_path = os.path.join(audio_path,  f"{test_file.split('/')[-1].split('.')[0]+'.wav'}")
             check_folder(out_a_path)
             audiowrite(out_a_path,16000,(pred_clean* maxv).astype(np.int16))
