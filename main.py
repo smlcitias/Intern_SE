@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--task', type=str, default='VCTK') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
-    parser.add_argument('--save_results', action='store_true')
+    parser.add_argument('--save_results', type=str, default='False')
     parser.add_argument('--re_epochs', type=int, default=300)
     parser.add_argument('--checkpoint', type=str, default=None)
 
