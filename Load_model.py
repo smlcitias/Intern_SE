@@ -110,23 +110,6 @@ def Load_data(args, Train_path):
 def load_torch(path):
     return torch.load(path)
 
-class CustomDataset(Dataset):
-
-    def __init__(self, paths, clean_path):   # initial logic happens like transform
-
-        self.y_paths = paths
-        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1]) for noisy_path in paths]
-
-    def __getitem__(self, index):
-        
-        noisy = torch.load(self.y_paths[index])
-        clean = torch.load(self.c_paths[index])
-
-        return noisy, clean
-
-    def __len__(self):  # return count of sample we have
-        
-        return len(self.n_paths)
 
 class CustomDataset(Dataset):
 
