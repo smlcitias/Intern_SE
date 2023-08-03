@@ -1,4 +1,4 @@
-# Intern_SE
+# Intern_SE_torch
 
 We show two task SE models with BLSTM, one for the Mapping task and the other for the Masking task. The dataset is VCTK.  
 The Dataset is [VCTK_sp28](https://drive.google.com/file/d/1sePGXayGyJkqSFaCPwzI8GshZ5OFL-kJ/view?usp=share_link)
