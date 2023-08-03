@@ -20,15 +20,15 @@ python main.py --model BLSTM_01 --target MAP --batch_size 1 --epochs 50 \
 
 ## Environment Setup  
 python-----------3.11.4  
-torch------------2.0.1
-torchaudio-------2.0.2
-torchmetrics-----1.0.1
-speechbrain------0.5.15
-scikit-learn-----1.3.0
+torch------------2.0.1  
+torchaudio-------2.0.2  
+torchmetrics-----1.0.1  
+speechbrain------0.5.15  
+scikit-learn-----1.3.0  
 numpy------------1.25.2  
 scipy------------1.11.1  
 tensorboardx-----2.6.2  
 tqdm-------------4.65.0  
-pandas-----------2.0.3 
+pandas-----------2.0.3  
 pystoi-----------0.3.3  
 pesq-------------0.0.4  
