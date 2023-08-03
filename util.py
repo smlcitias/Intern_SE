@@ -1,14 +1,9 @@
-import librosa
 import numpy as np
-# from pypesq import pesq
-from pesq import pesq
-from pystoi.stoi import stoi
 import scipy
 import pdb
 import torch, os
-# import torch.nn.functional as F
-# from torchaudio import functional as taF
-
+from torchmetrics.functional.audio.stoi import short_time_objective_intelligibility
+from torchmetrics.functional.audio.pesq import perceptual_evaluation_speech_quality
 epsilon = np.finfo(float).eps
 
 
@@ -24,11 +19,10 @@ def check_folder(path):
 def cal_score(clean,enhanced):
     clean = clean/abs(clean).max()
     enhanced = enhanced/abs(enhanced).max()
-    s_stoi = stoi(clean, enhanced, 16000)
-    # s_pesq = pesq(clean, enhanced, 16000)
-    s_pesq = pesq(16000,clean, enhanced, 'wb')
+    s_stoi = short_time_objective_intelligibility(enhanced, clean, 16000).float()
+    s_pesq = perceptual_evaluation_speech_quality(enhanced, clean, 16000, 'wb').float()
     
-    return round(s_pesq,5), round(s_stoi,5)
+    return round(s_pesq.numpy()[0],5), round(s_stoi.numpy()[0],5)
 
 
 def get_filepaths(directory,ftype='.wav'):
@@ -99,4 +93,41 @@ def recons_spec_phase(Sxx_r, phase, length_wav, feature_type='log1p'):
                      win_length=512,
                      window=scipy.signal.hamming,
                      length=length_wav)
+    return result
+
+def make_spectrum_torch(wave=None, feature_type='log1p', device=None):
+    
+    # pdb.set_trace()
+    win = torch.hamming_window(window_length=512, device=device)
+    com_stft = torch.stft(input=wave,n_fft=512, hop_length=256, win_length=512, window=win, center=False, return_complex=True)
+
+    utt_len = com_stft.shape[-1]
+    phase = torch.exp(1j * torch.angle(com_stft))
+    D = torch.abs(com_stft)
+
+    ### Feature type
+    if feature_type == 'log1p':
+        Sxx = torch.log1p(D)
+    elif feature_type == 'lps':
+        Sxx = torch.log10(D**2)
+    elif feature_type == 'lps+':
+        Sxx = torch.log10((D+1e-12)**2)
+    else:
+        Sxx = D
+
+    return Sxx, phase, wave.shape[-1]
+
+def recons_spec_phase_torch(Sxx_r, phase, length_wav, feature_type='log1p', device=None):
+      
+    if feature_type == 'log1p':
+        Sxx_r = torch.expm1(Sxx_r)
+        # if torch.min(Sxx_r) < 0:
+            # print("Expm1 < 0 !!")
+    elif feature_type == 'lps' or 'lps+':
+        Sxx_r = torch.sqrt(10**(Sxx_r))
+
+    R = torch.multiply(Sxx_r , phase)
+    win = torch.hamming_window(window_length=512, device=device)
+    result = torch.istft(R, n_fft=512, hop_length=256, win_length=512, window=win, center=False, length=length_wav, return_complex=False) 
+
     return result
