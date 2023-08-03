@@ -13,7 +13,7 @@ python main.py --model BLSTM_01 --target MAP --batch_size 1 --epochs 50 \
 --target　　　　　　　　defined the training task MAP or MASK  
 --batch_size　　　　　　training batch   
 --epochs　　　　　　　　training epochs  
---loss　　　　　　　　　training loss with mse, l1, l1smooth, cosine ,CE, stoi 
+--loss　　　　　　　　　training loss with mse, l1, l1smooth, cosine ,CE, stoi   
 --version　　　　　　　 defined your version  
 --lr　　　　　　　　　　training learn rate  
 --task　　　　　　　　　defined your datasets  
