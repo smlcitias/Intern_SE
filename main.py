@@ -77,7 +77,8 @@ if __name__ == '__main__':
         'noisy':'/mnt/Intern_SE/Data/noisy_testset_wav',
         'clean':'/mnt/Intern_SE/Data/clean_testset_wav'
         }
-    elif args.task=='TMHINTQI_V2':    
+        
+    elif args.task=='TMHINT':    
         Train_path = {
         'noisy':'/mnt/TMHINT_QI_V2re/training/noisy',
         'clean':'/mnt/TMHINT_QI_V2re/training/clean'

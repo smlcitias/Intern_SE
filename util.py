@@ -24,6 +24,12 @@ def cal_score(clean,enhanced):
     
     return round(s_pesq.numpy()[0],5), round(s_stoi.numpy()[0],5)
 
+def padpad(wave=None, stride=48):
+    
+    pad_length = stride - wave.size(-1) % stride
+    noisy_padded = torch.nn.functional.pad(wave, (0, pad_length))    
+    
+    return noisy_padded
 
 def get_filepaths(directory,ftype='.wav'):
     file_paths = []

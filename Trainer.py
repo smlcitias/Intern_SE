@@ -11,8 +11,8 @@ from util import *
 from sklearn import preprocessing
 from speechbrain.nnet.loss.stoi_loss import stoi_loss
 
-maxv = np.iinfo(np.int16).max
-epsilon = np.finfo(float).eps
+maxv = torch.iinfo(int).max
+epsilon = torch.finfo(float).eps
 
 class Trainer:
     def __init__(self, model, version, epochs, epoch, best_loss, optimizer,scheduler, 
@@ -53,26 +53,42 @@ class Trainer:
     def _train_step(self, in_y, in_c, target):
         
         device = self.device 
-        wav_y, wav_c = in_y.transpose(1,2).squeeze(2).to(device), in_c.transpose(1,2).squeeze(2).to(device)
+        wav_y, wav_c = in_y.transpose(1,2).squeeze(2).to(device), in_c.transpose(1,2).squeeze(2).to(device)   # (B, L)
 
-        y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)
-        c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)
-        
-        
+        if self.args.feature== 'wave':
+            y = padpad(wave=wav_y, stride=48).unsqueeze(0)   # (B, C, L)
+            c = padpad(wave=wav_c, stride=48).unsqueeze(0)   # (B, C, L)
+        else:
+            y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)   # (B, C, L)
+            c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)   # (B, C, L)
+        # pdb.set_trace()
         if target == 'MAP':
-            pred = self.model(y.permute(2,0,1))       
-            wave = pred.permute(1,2,0)
+            pred = self.model(y)       
+            wave = pred
             
         elif target == 'MASK':      
-            pred_irm = self.model(y.permute(2,0,1))
-            wave = y*pred_irm.permute(1,2,0)
-            
+            pred_irm = self.model(y)
+            wave = y*pred_irm
+           
         if self.args.loss == 'stoi':
-            rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
-            loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+            if self.args.feature== 'wave':
+                rec_wav = wave.squeeze(0)[:,:wav_c.shape[1]]
+                loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+                
+            else:
+                rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
+                loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+                
+        elif self.args.loss == 'l1_stoi':
+            if self.args.feature== 'wave':
+                rec_wav = wave.squeeze(0)[:,:wav_c.shape[1]]
+                loss = 100*self.criterion(wave+epsilon, c+epsilon)+stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+            else:
+                rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
+                loss = 100*self.criterion(wave+epsilon, c+epsilon)+stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
         else:
-            loss = self.criterion(wave, c)
-        
+            loss = self.criterion(wave+epsilon, c+epsilon)
+        # pdb.set_trace() 
         self.train_loss += loss.item()
         self.optimizer.zero_grad()
         loss.backward()
@@ -92,31 +108,48 @@ class Trainer:
             
         progress.close()
         self.train_loss /= len(self.loader['train'])
-
-        print(f'train_loss:{self.train_loss}')
+        
+        
+        print(f'{self.args.model}_train_loss:{self.train_loss}')
 
     def _val_step(self, in_y, in_c, target):
         
         device = self.device 
-        wav_y, wav_c = in_y.transpose(1,2).squeeze(2).to(device), in_c.transpose(1,2).squeeze(2).to(device)
+        wav_y, wav_c = in_y.transpose(1,2).squeeze(2).to(device), in_c.transpose(1,2).squeeze(2).to(device)   # (B, L)
 
-        y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)
-        c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)
-        
+        if self.args.feature== 'wave':
+            y = padpad(wave=wav_y, stride=48).unsqueeze(0)   # (B, C, L)
+            c = padpad(wave=wav_c, stride=48).unsqueeze(0)   # (B, C, L)
+        else:
+            y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)   # (B, C, L)
+            c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)   # (B, C, L)
         
         if target == 'MAP':
-            pred = self.model(y.permute(2,0,1))       
-            wave = pred.permute(1,2,0)
+            pred = self.model(y)       
+            wave = pred
             
         elif target == 'MASK':      
-            pred_irm = self.model(y.permute(2,0,1))
-            wave = y*pred_irm.permute(1,2,0)
-            
+            pred_irm = self.model(y)
+            wave = y*pred_irm
+           
         if self.args.loss == 'stoi':
-            rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
-            loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+            if self.args.feature== 'wave':
+                rec_wav = wave.squeeze(0)[:,:wav_c.shape[1]]
+                loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+            else:
+                rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
+                loss = stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+                
+        elif self.args.loss == 'l1_stoi':
+            if self.args.feature== 'wave':
+                rec_wav = wave.squeeze(0)[:,:wav_c.shape[1]]
+                loss = 100*self.criterion(wave+epsilon, c+epsilon)+stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+            else:
+                rec_wav = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=device)
+                loss = 100*self.criterion(wave+epsilon, c+epsilon)+stoi_loss(rec_wav, wav_c, wav_c.shape, reduction='mean')
+        
         else:
-            loss = self.criterion(wave, c)
+            loss = self.criterion(wave+epsilon, c+epsilon)
         
         self.val_loss += loss.item()   
        
@@ -136,7 +169,7 @@ class Trainer:
 
         self.val_loss /= len(self.loader['val'])
         
-        print(f'val_loss:{self.val_loss}')
+        print(f'{self.args.model}_val_loss:{self.val_loss}')
        
         if self.best_loss > self.val_loss:
             
@@ -151,28 +184,35 @@ class Trainer:
         if args.task=='VCTK':           
             noisy, sr = torchaudio.load(test_file)
             clean, sr = torchaudio.load(os.path.join(clean_path, test_file.split('/')[-1]))
-        elif args.task=='TMHINTQI_V2':
+        elif args.task=='TMHINT':
             noisy, sr = torchaudio.load(test_file)
-            rename = test_file.split('/')[-1].split[-4]+'_'+test_file.split('/')[-1].split[-3]+'_'+test_file.split('/')[-1].split[-2]+'_'+test_file.split('/')[-1].split[-1]
-            clean, sr = torchaudio.load(os.path.join(clean_path, rename))
+            rename = test_file.split('/')[-1].split('_')[-4]+'_'+test_file.split('/')[-1].split('_')[-3]+'_'+test_file.split('/')[-1].split('_')[-2]+'_'+test_file.split('/')[-1].split('_')[-1]
+            clean, sr = torchaudio.load(os.path.join(clean_path, rename))  # (C, L)
         
-        y, y_phase, y_len = make_spectrum_torch(wave=noisy.to(self.device), feature_type=args.feature, device=self.device)
-        c, c_phase, c_len = make_spectrum_torch(wave=clean.to(self.device), feature_type=args.feature, device=self.device)
-                               
+        if args.feature== 'wave':
+            y = padpad(wave=noisy, stride=48).unsqueeze(0).cuda()   # (B, C, L)
+            c = padpad(wave=clean, stride=48).unsqueeze(0).cuda()   # (B, C, L)
+        else:
+            y, y_phase, y_len = make_spectrum_torch(wave=noisy.to(self.device),feature_type =args.feature, device=self.device)   # (B, C, L)
+            c, c_phase, c_len = make_spectrum_torch(wave=clean.to(self.device),feature_type =args.feature, device=self.device)   # (B, C, L)
+            
         if target == 'MAP':
-            pred = self.model(y.permute(2,0,1))       
-            wave = pred.permute(1,2,0)
+            pred = self.model(y)       
+            wave = pred
 
         elif target == 'MASK':
-            pred_irm = self.model(y.permute(2,0,1))
-            wave = y*pred_irm.permute(1,2,0)
-
-        pred_clean = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=self.device)
-
+            pred_irm = self.model(y)
+            wave = y*pred_irm
+        
+        if args.feature== 'wave':
+            pred_clean = wave.squeeze(0)[:,:clean.shape[1]]
+        else:   
+            pred_clean = recons_spec_phase_torch(wave, phase=y_phase, length_wav=y_len, feature_type=self.args.feature,device=self.device)
+        # pdb.set_trace()
         if self.save_results == 'True':
             out_a_path = os.path.join(audio_path,  f"{test_file.split('/')[-1].split('.')[0]+'.wav'}")
             check_folder(out_a_path)
-            torchaudio.save(out_a_path, pred_clean.cpu(), sr, format='wav', bits_per_sample=16)
+            torchaudio.save(out_a_path, pred_clean.cpu(), sr, format='wav', encoding='PCM_S', bits_per_sample=16)
         
         n_pesq, n_stoi = cal_score(clean,noisy)
         s_pesq, s_stoi = cal_score(clean,pred_clean)

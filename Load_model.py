@@ -60,6 +60,7 @@ def Load_model(args,model,checkpoint_path,model_path):
     criterion = {
         'mse'     : nn.MSELoss(),
         'l1'      : nn.L1Loss(),
+        'l1_stoi' : nn.L1Loss(),
         'l1smooth': nn.SmoothL1Loss(),
         'cosine'  : nn.CosineEmbeddingLoss()
     }
@@ -104,8 +105,8 @@ def Load_data(args, Train_path):
     if args.task =='VCTK':
         train_dataset, val_dataset = CustomDataset_VCTK(train_paths,clean_path,args.feature), CustomDataset_VCTK(val_paths,clean_path,args.feature)
     
-    elif args.task =='TMHINTQI_V2':
-        train_dataset, val_dataset = CustomDataset_TMHINTQI_V2(train_paths,clean_path,args.feature), CustomDataset_TMHINTQI_V2(val_paths,clean_path,args.feature)
+    elif args.task =='TMHINT':
+        train_dataset, val_dataset = CustomDataset_TMHINT(train_paths,clean_path,args.feature), CustomDataset_TMHINT(val_paths,clean_path,args.feature)
 
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
@@ -140,8 +141,26 @@ class CustomDataset_VCTK(Dataset):
     def __len__(self):  # return count of sample we have
         
         return len(self.n_paths)        
+
+class CustomDatasetDNS(Dataset):
+
+    def __init__(self, paths, clean_path):   # initial logic happens like transform
         
-class CustomDataset_TMHINTQI_V2(Dataset):
+        self.n_paths = paths
+        self.c_paths = [os.path.join(clean_path,'clean_fileid_'+noisy_path.split('_')[-1]) for noisy_path in paths]
+
+    def __getitem__(self, index):
+        
+        noisy, sr = torchaudio.load(self.n_paths[index])   # (C, L)               
+        clean, sr = torchaudio.load(self.c_paths[index])   # (C, L)
+        
+        return noisy, clean, sr
+
+    def __len__(self):  # return count of sample we have
+        
+        return len(self.n_paths)  
+    
+class CustomDataset_TMHINT(Dataset):
 
     def __init__(self, paths, clean_path,feature):   # initial logic happens like transform
         
