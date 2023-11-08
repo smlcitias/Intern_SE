@@ -166,7 +166,8 @@ class CustomDataset_TMHINT(Dataset):
         
         self.feature = feature
         self.n_paths = paths
-        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1].split('_')[-4]+'_'+noisy_path.split('/')[-1].split('_')[-3]+'_'+noisy_path.split('/')[-1].split('_')[-2]+'_'+noisy_path.split('/')[-1].split('_')[-1]) for noisy_path in paths]
+        # self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1].split('_')[-4]+'_'+noisy_path.split('/')[-1].split('_')[-3]+'_'+noisy_path.split('/')[-1].split('_')[-2]+'_'+noisy_path.split('/')[-1].split('_')[-1]) for noisy_path in paths]
+        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1].split('_')[1], noisy_path.split('/')[-1]) for noisy_path in paths]
     def __getitem__(self, index):
         
         noisy, sr = torchaudio.load(self.n_paths[index])
