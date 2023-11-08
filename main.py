@@ -16,7 +16,7 @@ cudnn.deterministic = True
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', type=str, default='V1')
-    parser.add_argument('--mode', type=str, default='train')
+    parser.add_argument('--mode', type=str, default='train') #transformerencoder
     parser.add_argument('--epochs', type=int, default=400)
     parser.add_argument('--batch_size', type=int, default=8)  
     parser.add_argument('--lr', type=float, default=0.00005)
@@ -24,7 +24,8 @@ def get_args():
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--model', type=str, default='BLSTM') 
     parser.add_argument('--gpu', type=str, default='0')
-    parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
+    parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'MASK'
+    parser.add_argument('--feature', type=str, default='log1p') 
     parser.add_argument('--task', type=str, default='VCTK') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
@@ -39,20 +40,16 @@ def get_path(args):
     
     checkpoint_path = f'./checkpoint/'\
     f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-    f'_{args.loss}_batch{args.batch_size}_lr{args.lr}.pth.tar'
+    f'_{args.loss}_{args.feature}_batch{args.batch_size}_lr{args.lr}.pth.tar'
     
     model_path = f'./save_model/'\
     f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-    f'_{args.loss}_batch{args.batch_size}_lr{args.lr}.pth.tar'
+    f'_{args.loss}_{args.feature}_batch{args.batch_size}_lr{args.lr}.pth.tar'
     
-    score_path = {
-    'PESQ':f'./sourc/PESQ/'\
+    score_path = f'./scores/'\
     f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-    f'_{args.loss}_batch{args.batch_size}_lr{args.lr}.csv',       
-    'STOI':f'./sourc/STOI/'\
-    f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-    f'_{args.loss}_batch{args.batch_size}_lr{args.lr}.csv'
-    }
+    f'_{args.loss}_{args.feature}_batch{args.batch_size}_lr{args.lr}.csv'    
+    
     
     return checkpoint_path,model_path,score_path
 
@@ -71,20 +68,30 @@ if __name__ == '__main__':
     print('Lr = ', args.lr)
     
     # data path
-    Train_path = {
-    'noisy':'/mnt/Nas234/Corpus/VCTK_28spk/noisy_trainset_wav',
-    'clean':'/mnt/Nas234/Corpus/VCTK_28spk/clean_trainset_wav'
-    } 
-
-    Test_path = {
-    'noisy':'/mnt/Nas234/Corpus/VCTK_28spk/noisy_testset_wav',
-    'clean':'/mnt/Nas234/Corpus/VCTK_28spk/clean_testset_wav'
-    }
+    if args.task=='VCTK':    
+        Train_path = {
+        'noisy':'/mnt/Intern_SE/Data/noisy_trainset_wav',
+        'clean':'/mnt/Intern_SE/Data/clean_trainset_wav'
+        } 
+        Test_path = {
+        'noisy':'/mnt/Intern_SE/Data/noisy_testset_wav',
+        'clean':'/mnt/Intern_SE/Data/clean_testset_wav'
+        }
+        
+    elif args.task=='TMHINT':    
+        Train_path = {
+        'noisy':'/mnt/TMHINT_QI_V2re/training/noisy',
+        'clean':'/mnt/TMHINT_QI_V2re/training/clean'
+        } 
+        Test_path = {
+        'noisy':'/mnt/TMHINT_QI_V2re/testing/noisy',
+        'clean':'/mnt/TMHINT_QI_V2re/testing/clean'
+        }
         
     Output_path = {
     'audio':f'./result/'\
         f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-        f'_{args.loss}_batch{args.batch_size}_lr{args.lr}'
+        f'_{args.loss}_{args.feature}_batch{args.batch_size}_lr{args.lr}'
     }
     
     # declair path
@@ -93,9 +100,9 @@ if __name__ == '__main__':
     # tensorboard
     writer = SummaryWriter(f'./logs/'\
                            f'{args.model}_{args.version}_{args.task}_{args.target}_epochs{args.epochs}_{args.optim}' \
-                           f'_{args.loss}_batch{args.batch_size}_lr{args.lr}')
+                           f'_{args.loss}_{args.feature}_batch{args.batch_size}_lr{args.lr}')
     
-    # pdb.set_trace()
+
     exec (f"from models.{args.model.split('_')[0]} import {args.model} as model")
     model     = model()
     model, epoch, best_loss, optimizer, scheduler, criterion, device = Load_model(args,model,checkpoint_path, model_path)
@@ -104,8 +111,8 @@ if __name__ == '__main__':
     if args.retrain:
         args.epochs = args.re_epochs 
         checkpoint_path, model_path, score_path = get_path(args)
-        
-    # pdb.set_trace()    
+    
+    
     Trainer = Trainer(model, args.version, args.epochs, epoch, best_loss, optimizer,scheduler, 
                       criterion, device, loader, Test_path, writer, model_path, score_path, args, Output_path, args.save_results, args.target)
     try:

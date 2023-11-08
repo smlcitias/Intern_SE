@@ -141,12 +141,11 @@ class transformerencoder(nn.Module):
     
     def forward(self,x):
 #         print(x.shape)
-        # pdb.set_trace()
-        x = self.first_layer(x)
+        x = self.first_layer(x.permute(0,2,1))
 #         print(x.shape)
         x = self.encoder(x.permute(0,2,1))
 #         print(x.shape)
         x = self.last_layer(x)
 #         print(x.shape)
         
-        return x.permute(0,2,1)
+        return x

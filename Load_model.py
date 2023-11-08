@@ -10,6 +10,7 @@ from tqdm import tqdm
 from joblib  import parallel_backend, Parallel, delayed
 from collections import OrderedDict
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torchaudio
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -59,12 +60,16 @@ def Load_model(args,model,checkpoint_path,model_path):
     criterion = {
         'mse'     : nn.MSELoss(),
         'l1'      : nn.L1Loss(),
+        'l1_stoi' : nn.L1Loss(),
         'l1smooth': nn.SmoothL1Loss(),
-        'cosine'  : nn.CosineEmbeddingLoss()}
+        'cosine'  : nn.CosineEmbeddingLoss()
+    }
 
     device    = torch.device(f'cuda:{args.gpu}')
- 
-    criterion = criterion[args.loss].to(device)
+    if args.loss=='stoi':
+        criterion = criterion['mse'].to(device)
+    else:
+        criterion = criterion[args.loss].to(device)
     
     optimizers = {
         'adam'    : Adam(model.parameters(),lr=args.lr,weight_decay=0),
@@ -96,8 +101,13 @@ def Load_data(args, Train_path):
     clean_path = Train_path['clean']
     # pdb.set_trace()
     train_paths,val_paths = train_test_split(file_paths,test_size=0.2,random_state=999)
+    
+    if args.task =='VCTK':
+        train_dataset, val_dataset = CustomDataset_VCTK(train_paths,clean_path,args.feature), CustomDataset_VCTK(val_paths,clean_path,args.feature)
+    
+    elif args.task =='TMHINT':
+        train_dataset, val_dataset = CustomDataset_TMHINT(train_paths,clean_path,args.feature), CustomDataset_TMHINT(val_paths,clean_path,args.feature)
 
-    train_dataset, val_dataset = CustomDataset(train_paths,clean_path), CustomDataset(val_paths,clean_path)
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
                               shuffle=True, num_workers=4, pin_memory=False),
@@ -110,28 +120,63 @@ def Load_data(args, Train_path):
 def load_torch(path):
     return torch.load(path)
 
+class CustomDataset_VCTK(Dataset):
 
-class CustomDataset(Dataset):
-
-    def __init__(self, paths, clean_path):   # initial logic happens like transform
+    def __init__(self, paths, clean_path,feature):   # initial logic happens like transform
         
+        self.feature = feature
         self.n_paths = paths
-        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1]) for noisy_path in paths]
+        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1]) for noisy_path in paths]        
     def __getitem__(self, index):
         
-        noisy, sr = librosa.load(self.n_paths[index],sr=16000)
-        sep_y, y_phase,y_len = make_spectrum(y=noisy,feature_type ='spec')
-        # print('sep_y.shape = ', sep_y.shape)
+        noisy, sr = torchaudio.load(self.n_paths[index])
+        # y, y_phase, y_len = make_spectrum_torch(wave=noisy,feature_type = self.feature)
         
-        clean, sr = librosa.load(self.c_paths[index],sr=16000)
-        sep_c, c_phase,c_len = make_spectrum(y=clean,feature_type ='spec')
-        # print('sep_c.shape = ', sep_c.shape)
+        clean, sr = torchaudio.load(self.c_paths[index])
+        # c, c_phase, c_len = make_spectrum_torch(wave=clean,feature_type = self.feature)
         
-        return sep_y, sep_c
-        # return sep_y.transpose(1,2), sep_c.transpose(1,2)
+        return noisy, clean
+        # return y, y_phase, c, c_phase, y_len
 
     def __len__(self):  # return count of sample we have
         
         return len(self.n_paths)        
+
+class CustomDatasetDNS(Dataset):
+
+    def __init__(self, paths, clean_path):   # initial logic happens like transform
         
+        self.n_paths = paths
+        self.c_paths = [os.path.join(clean_path,'clean_fileid_'+noisy_path.split('_')[-1]) for noisy_path in paths]
+
+    def __getitem__(self, index):
+        
+        noisy, sr = torchaudio.load(self.n_paths[index])   # (C, L)               
+        clean, sr = torchaudio.load(self.c_paths[index])   # (C, L)
+        
+        return noisy, clean, sr
+
+    def __len__(self):  # return count of sample we have
+        
+        return len(self.n_paths)  
     
+class CustomDataset_TMHINT(Dataset):
+
+    def __init__(self, paths, clean_path,feature):   # initial logic happens like transform
+        
+        self.feature = feature
+        self.n_paths = paths
+        self.c_paths = [os.path.join(clean_path, noisy_path.split('/')[-1].split('_')[-4]+'_'+noisy_path.split('/')[-1].split('_')[-3]+'_'+noisy_path.split('/')[-1].split('_')[-2]+'_'+noisy_path.split('/')[-1].split('_')[-1]) for noisy_path in paths]
+    def __getitem__(self, index):
+        
+        noisy, sr = torchaudio.load(self.n_paths[index])
+        # y, y_phase, y_len = make_spectrum_torch(wave=noisy,feature_type = self.feature)
+        
+        clean, sr = torchaudio.load(self.c_paths[index])
+        # c, c_phase, c_len = make_spectrum_torch(wave=clean,feature_type = self.feature)
+        
+        return noisy, clean
+
+    def __len__(self):  # return count of sample we have
+        
+        return len(self.n_paths)       
