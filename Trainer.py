@@ -61,6 +61,9 @@ class Trainer:
         else:
             y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)   # (B, C, L)
             c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)   # (B, C, L)
+            y = y.transpose(1,2)
+            c = c.transpose(1,2)
+
         # pdb.set_trace()
         if target == 'MAP':
             pred = self.model(y)       
@@ -123,7 +126,9 @@ class Trainer:
         else:
             y, y_phase, y_len = make_spectrum_torch(wave=wav_y,feature_type = self.args.feature, device=device)   # (B, C, L)
             c, c_phase, c_len = make_spectrum_torch(wave=wav_c,feature_type = self.args.feature, device=device)   # (B, C, L)
-        
+            y = y.transpose(1,2)
+            c = c.transpose(1,2)
+
         if target == 'MAP':
             pred = self.model(y)       
             wave = pred
@@ -195,7 +200,8 @@ class Trainer:
         else:
             y, y_phase, y_len = make_spectrum_torch(wave=noisy.to(self.device),feature_type =args.feature, device=self.device)   # (B, C, L)
             c, c_phase, c_len = make_spectrum_torch(wave=clean.to(self.device),feature_type =args.feature, device=self.device)   # (B, C, L)
-            
+            y = y.transpose(1,2)
+       
         if target == 'MAP':
             pred = self.model(y)       
             wave = pred
@@ -203,6 +209,8 @@ class Trainer:
         elif target == 'MASK':
             pred_irm = self.model(y)
             wave = y*pred_irm
+
+        wave = wave.transpose(1,2)
         
         if args.feature== 'wave':
             pred_clean = wave.squeeze(0)[:,:clean.shape[1]]
