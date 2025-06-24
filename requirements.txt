@@ -1,0 +1,8 @@
+numpy
+scipy
+librosa
+tqdm
+pystoi
+pesq
+tensorboardx
+pandas
